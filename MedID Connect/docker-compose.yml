@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: medid_connect
+      POSTGRES_USER: medid
+      POSTGRES_PASSWORD: medid_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - medid_postgres:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      - postgres
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://medid:medid_password@postgres:5432/medid_connect
+      BACKEND_PUBLIC_URL: http://localhost:8000
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  medid_postgres:
