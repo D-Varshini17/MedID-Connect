@@ -1,7 +1,10 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.database import check_database_connection
 from app.routes import (
     admin_routes,
     ai_routes,
@@ -31,10 +34,25 @@ from app.routes import (
 )
 from app.services.rate_limit import RateLimitMiddleware
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Starting MedID Connect backend...")
+    try:
+        print("Connecting database...")
+        check_database_connection()
+        print("Backend initialized successfully")
+    except Exception as exc:
+        print(f"Startup error: {exc}")
+        print("Backend initialized with degraded database status.")
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
     description="Production-ready scaffold for the MedID Connect healthcare platform.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -74,6 +92,20 @@ app.include_router(product_analytics_routes.router)
 app.include_router(admin_routes.router)
 
 
+@app.get("/", tags=["health"])
+def root() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/health", tags=["health"])
+def render_health() -> dict[str, str]:
+    return {"status": "healthy"}
+
+
 @app.get("/api/health", tags=["health"])
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "MedID Connect API", "environment": settings.environment}
+    return {
+        "status": "healthy",
+        "service": "MedID Connect API",
+        "environment": settings.environment,
+    }

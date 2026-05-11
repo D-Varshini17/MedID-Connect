@@ -38,6 +38,66 @@ Docs:
 http://localhost:8000/docs
 ```
 
+Health checks:
+
+```text
+GET /
+GET /health
+GET /api/health
+```
+
+## Render Deployment
+
+Use these settings on Render.
+
+```text
+Root Directory: MedID Connect/backend
+Build Command: pip install -r requirements.txt
+Start Command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Important: the start command must include `:app`. `uvicorn app.main --host ...` is not a valid ASGI target and can fail during startup.
+
+`runtime.txt` pins Render to Python 3.12.8:
+
+```text
+python-3.12.8
+```
+
+Required environment variables:
+
+```text
+ENVIRONMENT=production
+DATABASE_URL=<Render PostgreSQL internal or external URL>
+JWT_SECRET_KEY=<long random secret>
+BACKEND_PUBLIC_URL=https://<your-render-service>.onrender.com
+CORS_ORIGINS=https://<your-frontend-domain>,http://localhost:3000,http://localhost:8000,http://10.0.2.2:8000
+```
+
+Optional placeholders:
+
+```text
+HAPI_FHIR_BASE_URL=https://hapi.fhir.org/baseR4
+EPIC_CLIENT_ID=placeholder
+CERNER_CLIENT_ID=placeholder
+ABDM_CLIENT_ID=placeholder
+ABDM_CLIENT_SECRET=placeholder
+GOOGLE_VISION_API_KEY=placeholder
+```
+
+Database notes:
+
+- `DATABASE_URL` is read from the environment.
+- Legacy `postgres://` URLs are normalized to `postgresql://`.
+- Render PostgreSQL URLs get `sslmode=require` automatically when needed.
+- Startup logs database errors clearly but keeps the API online so `/`, `/health`, and `/docs` remain reachable while you fix database settings.
+
+After the service is live, run migrations from a Render shell or locally with the same `DATABASE_URL`:
+
+```powershell
+alembic upgrade head
+```
+
 ## Important APIs
 
 - Auth: `/api/auth/signup`, `/api/auth/login`, `/api/auth/me`
